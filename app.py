@@ -76,32 +76,27 @@ def upload_file():
             log_file.write(f"{datetime.now()}: {hash_name} "
                            f"uploaded by {request.authorization.username}\n")
             log_file.close()
-        return f"Uploaded file's hash: {hash_name}, file uploaded by " \
-               f"{request.authorization.username}", 201
+        return hash_name, 201
 
 
-@app.route('/download', methods=['POST'])
-def download_file():
+@app.route('/download/<hash_name>', methods=['GET', 'POST'])
+def download_file(hash_name):
     """
     Загрузка файла для любого пользователя
     """
-    jdata = request.get_json()
-    hash_name = str(jdata['hash_name'])
     result = find_file(hash_name)
     if result:
         return send_file(result[0])
     return 'Not found', 404
 
 
-@app.route('/delete', methods=['POST'])
+@app.route('/delete/<hash_name>', methods=['GET', 'POST'])
 @login_required
-def delete_file():
+def delete_file(hash_name):
     """
     Удаление файла из директории. Перед удалением с помощью лога проверяется,
     тот ли пользователь добавлял файл изначально
     """
-    jdata = request.get_json()
-    hash_name = str(jdata['hash_name'])
     result = find_file(hash_name)
     if result:
         file_not_found_in_info = True
