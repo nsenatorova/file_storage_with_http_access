@@ -14,11 +14,18 @@ app.config['LOG_FILE'] = LOG_FILE
 
 
 def check_auth(username, password):
+    """
+    Проверка авторизации
+    """
     return (username == 'first_user' and password == 'first_password') or \
            (username == 'second_user' and password == 'second_password')
 
 
 def login_required(f):
+    """
+    Декоратор для авторизации
+    """
+
     @wraps(f)
     def wrapped_view(**kwargs):
         auth = request.authorization
@@ -30,6 +37,9 @@ def login_required(f):
 
 
 def find_file(filename):
+    """
+    Поиск файла по директориям
+    """
     result = []
     search_path = os.path.dirname(__file__)
     for root, directory, files in os.walk(search_path):
@@ -41,17 +51,24 @@ def find_file(filename):
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
+    """
+    Загрузка файла авторизованным пользователем
+    """
     if 'file' not in request.files:
         return 'There is no file!', 400
     uploaded_file = request.files['file']
-    hash_object = hashlib.md5(uploaded_file.filename.encode())
-    hash_name = hash_object.hexdigest()
+    hasher = hashlib.new('sha256')
+    content = uploaded_file.read()
+    hasher.update(content)
+    hash_name = hasher.hexdigest()
     hash_dir = str(hash_name)[0:2]
     directory = os.path.join(os.path.dirname(__file__), app.config['UPLOAD_FOLDER'], hash_dir)
     if not os.path.exists(directory):
         os.makedirs(directory)
     path = os.path.join(directory, hash_name)
     uploaded_file.save(path)
+    with open(path, 'wb') as file:
+        file.write(content)
     if not os.path.exists(path):
         abort(404)
     else:
@@ -65,6 +82,9 @@ def upload_file():
 
 @app.route('/download', methods=['POST'])
 def download_file():
+    """
+    Загрузка файла для любого пользователя
+    """
     jdata = request.get_json()
     hash_name = str(jdata['hash_name'])
     result = find_file(hash_name)
@@ -76,6 +96,10 @@ def download_file():
 @app.route('/delete', methods=['POST'])
 @login_required
 def delete_file():
+    """
+    Удаление файла из директории. Перед удалением с помощью лога проверяется,
+    тот ли пользователь добавлял файл изначально
+    """
     jdata = request.get_json()
     hash_name = str(jdata['hash_name'])
     result = find_file(hash_name)
